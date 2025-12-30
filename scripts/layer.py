@@ -1,8 +1,9 @@
 import numpy as np
+from function import *
 
 class Layer:
 
-  def __init__(self, input_dim, output_dim, acti_func, acti_diff_func, name, init_weight=0):
+  def __init__(self, input_dim, output_dim, acti_func, acti_diff_func, name, init_func=np.ones):
     self.input_dim = input_dim
     self.output_dim = output_dim
     self.acti_func = acti_func
@@ -10,10 +11,11 @@ class Layer:
     self.name = name
     self.input_vec = np.zeros(input_dim+1)
     self.linearcomb_vec = np.zeros(output_dim)
-    self.weight = np.ones((output_dim, 1 + input_dim)) * init_weight
+    self.weight = init_func((output_dim, 1 + input_dim))
   
   def forward(self, input_vec):
-    self.input_vec = np.hstack([[1], input_vec]).T
+    input_vec_normalized = (input_vec - np.mean(input_vec)) / np.std(input_vec)
+    self.input_vec = np.hstack([[1], input_vec_normalized]).T
     self.linearcomb_vec = self.weight @ self.input_vec
     return self.acti_func(self.linearcomb_vec)
   
