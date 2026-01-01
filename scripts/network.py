@@ -28,11 +28,19 @@ class Network:
   def back(self, teacher_vec):
     self.deltas = [self.eval_diff_func(self.vecs[-1], teacher_vec)]
     for i in reversed(range(len(self.layers))):
-      self.deltas.insert(0, self.layers[i].back(self.deltas[0], self.eta))
+      # print(f"{self.layers[i].name} {self.deltas[0]}")
+      # delta = self.layers[i].back(self.deltas[0])
+      # print(f"{self.layers[i].name} {delta}")
+      self.deltas.insert(0, self.layers[i].back(self.deltas[0]))
+      # print(f"{self.layers[i].name} {self.deltas[0]}")
     # print(self.deltas)
 
   def eval(self, teacher_vec):
     return self.eval_func(self.vecs[-1], teacher_vec)
+  
+  def show(self):
+    for layer in self.layers:
+      print(f"{layer.name} ({layer.input_dim} > {layer.output_dim})")
 
 
 
