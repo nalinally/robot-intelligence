@@ -24,3 +24,17 @@ cd ~/venv_robot-intelligence/robot-intelligence
 cd scripts
 python3 demo_learn.py
 ```
+
+# 各ディレクトリの説明
+
+## datas
+実験を行った時のデータが入っている（訓練データ、テストデータなどではない）
+
+## figures
+実験を行った時のグラフが入っている
+
+## scripts
+ソースコードが入っている
+
+## src
+途中までc++で実装しようとした残骸が入っている
