@@ -4,6 +4,7 @@ from function import *
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
+import csv
 rng = np.random.default_rng()
 
 def predict(net, inputs):
@@ -25,7 +26,7 @@ def ap(outputs, teachers):
   # print(f"{args[:, 5]} {np.array(outputs)[:, 5]} {np.array(teachers)[:, 5]} {np.array(teachers)[:, 5] != 0}")
   return np.mean([auc(np.sort(args[:, i][np.array(teachers)[:, i] != 0])) for i in range(len(outputs[0]))])
 
-def learn(net, inputs_learn, teachers_learn, inputs_test, teachers_test, epoch):
+def learn(net, inputs_learn, teachers_learn, inputs_test, teachers_test, epoch, figname):
   data_size = len(inputs_learn)
   accuracys = [accuracy(predict(net, inputs_test), teachers_test)]
   evals = [eval(predict(net, inputs_test), teachers_test, net.eval_func)]
@@ -45,17 +46,34 @@ def learn(net, inputs_learn, teachers_learn, inputs_test, teachers_test, epoch):
     evals.append(eval_)
   plt.figure()
   plt.plot([i for i in range(epoch+1)], accuracys)
-  plt.title("epoch vs accuracy")
-  plt.show(block=False)
+  plt.title(f"epoch vs accuracy ({figname})")
+  plt.xlabel("epoch")
+  plt.ylabel("accuracy")
+  plt.savefig(f"../figures/{figname}_accuracy.png")
+  # plt.show(block=False)
   plt.figure()
   plt.plot([i for i in range(epoch+1)], aps)
-  plt.title("epoch vs aps")
-  plt.show(block=False)
+  plt.title(f"epoch vs AP ({figname})")
+  plt.xlabel("epoch")
+  plt.ylabel("AP")
+  plt.savefig(f"../figures/{figname}_AP.png")
+  # plt.show(block=False)
   plt.figure()
   plt.plot([i for i in range(epoch+1)], evals)
-  plt.title("epoch vs evals")
-  plt.show()
-  return net
+  plt.title(f"epoch vs eval ({figname})")
+  plt.xlabel("epoch")
+  plt.ylabel("eval")
+  plt.savefig(f"../figures/{figname}_eval.png")
+  # plt.show()
+
+  with open(f"{figname}.csv", "w") as f:
+    writer = csv.writer(f)
+    writer.writerow(np.hstack([f"{figname}_epoch", [i for i in range(epoch+1)]]))
+    writer.writerow(np.hstack([f"{figname}_accuracy", accuracys]))
+    writer.writerow(np.hstack([f"{figname}_AP", aps]))
+    writer.writerow(np.hstack([f"{figname}_eval", evals]))
+
+  return net, [np.max(accuracys), np.max(aps), np.min(evals)]
 
 def encode_mnist_y(y):
   return [[1 if index==y_ else 0 for index in range(10)] for y_ in y]
@@ -71,30 +89,86 @@ def demo_logic():
 
   simple_logic_network = learn(simple_logic_network, [[0, 0], [0, 1], [1, 0], [1, 1]], [[1, 0], [1, 0], [1, 0], [0, 1]], [[0, 0], [0, 1], [1, 0], [1, 1]], [[1, 0], [1, 0], [1, 0], [0, 1]], epoch)
 
+def noise_test(net_, x_train, y_train, x_test_, y_test, epoch, noise_func, prefix):
+  net = net_
+  train_data_size = len(x_train)
+  test_data_size = len(x_test_)
+  x_train_1d = np.array(x_train).reshape([train_data_size, -1])
+  y_train_vec = encode_mnist_y(y_train)
+  y_test_vec = encode_mnist_y(y_test)
+  # noises = np.linspace(0, 0.25, 10)
+  noises = [0, 0.05, 0.1, 0.15, 0.2, 0.25]
+  accuracys = []
+  aps = []
+  evals = []
+  for noise_rate in noises:
+    print(f"noise:{noise_rate}")
+    noise = noise_func(noise_rate)
+    x_test = [noise(x_test__) for x_test__ in x_test_]
+    x_test_1d = np.array(x_test).reshape([test_data_size, -1])
+    net = net_
+    _, res = learn(net, x_train_1d, y_train_vec, x_test_1d, y_test_vec, epoch, f"{prefix}_nse{noise_rate}")
+    accuracys.append(res[0])
+    aps.append(res[1])
+    evals.append(res[2])
+  plt.figure()
+  plt.plot(noises, accuracys)
+  plt.title(f"noise rate vs accuracy ({prefix})")
+  plt.xlabel("noise rate")
+  plt.ylabel("accuracy")
+  plt.savefig(f"../figures/{prefix}_accuracy.png")
+  plt.figure()
+  plt.plot(noises, aps)
+  plt.title(f"noise rate vs AP ({prefix})")
+  plt.xlabel("noise rate")
+  plt.ylabel("AP")
+  plt.savefig(f"../figures/{prefix}_AP.png")
+  plt.figure()
+  plt.plot(noises, evals)
+  plt.title(f"noise rate vs eval ({prefix})")
+  plt.xlabel("noise rate")
+  plt.ylabel("eval")
+  plt.savefig(f"../figures/{prefix}_eval.png")
+
+  with open(f"{prefix}.csv", "w") as f:
+    writer = csv.writer(f)
+    writer.writerow(np.hstack([f"{prefix}_epoch", [i for i in range(epoch+1)]]))
+    writer.writerow(np.hstack([f"{prefix}_accuracy", accuracys]))
+    writer.writerow(np.hstack([f"{prefix}_AP", aps]))
+    writer.writerow(np.hstack([f"{prefix}_eval", evals]))
+
+def datasize_noise_test(net_, x_train_, y_train_, x_test, y_test, epoch, noise_func):
+  net = net_
+  down_sampling_rates = [5, 50, 500]
+  for down_sampling_rate in down_sampling_rates:
+    x_train = x_train_[::down_sampling_rate]
+    y_train = y_train_[::down_sampling_rate]
+    net = net_
+    noise_test(net, x_train, y_train, x_test, y_test, epoch, noise_func, f"dsp{down_sampling_rate}")
+
 def main():
   leaky_relu_a = 0.01
   softmax_a = 1
   eta = 0.01
-  epoch = 50
-  down_sampling_rate_train = 50
+  epoch = 30
+  # down_sampling_rate_train = 50
   down_sampling_rate_test = 5
   pooling_rate = 2
-  noise_rate = 0.01
 
   (x_train_all, y_train_all), (x_test_all, y_test_all) = tf.keras.datasets.mnist.load_data()
   # pooling = index_pooling(pooling_rate, pooling_rate)
   pooling = average_pooling(pooling_rate, pooling_rate)
-  noise = white_noise(noise_rate, [0, 255])
-  x_train = [noise(pooling(x_train_)) for x_train_ in x_train_all[::down_sampling_rate_train]]
-  y_train = y_train_all[::down_sampling_rate_train]
-  x_test = [noise(pooling(x_test_)) for x_test_ in x_test_all[::down_sampling_rate_test]]
+  noise_func = lambda x: white_noise(x, [0, 255])
+  x_train = [pooling(x_train_) for x_train_ in x_train_all]
+  y_train = y_train_all
+  x_test = [pooling(x_test_) for x_test_ in x_test_all[::down_sampling_rate_test]]
   y_test = y_test_all[::down_sampling_rate_test]
   train_data_size = len(x_train)
-  test_data_size = len(x_test)
+  # test_data_size = len(x_test)
   x_train_1d = np.array(x_train).reshape([train_data_size, -1])
-  x_test_1d = np.array(x_test).reshape([test_data_size, -1])
-  y_train_vec = encode_mnist_y(y_train)
-  y_test_vec = encode_mnist_y(y_test)
+  # x_test_1d = np.array(x_test).reshape([test_data_size, -1])
+  # y_train_vec = encode_mnist_y(y_train)
+  # y_test_vec = encode_mnist_y(y_test)
   image_size = len(x_train_1d[0])
 
   layer_dims = [image_size, 49, 25, 10]
@@ -109,7 +183,9 @@ def main():
   number_id_network.add_layer(layer.softMaxLayer(layer_dims[-1], layer_dims[-1], f"softmax[{len(layer_dims)-2}]", softmax_a))
 
   number_id_network.show()
-  number_id_network = learn(number_id_network, x_train_1d, y_train_vec, x_test_1d, y_test_vec, epoch)
+  # number_id_network = learn(number_id_network, x_train_1d, y_train_vec, x_test_1d, y_test_vec, epoch, "")
+  # noise_test(number_id_network, x_train, y_train, x_test, y_test, epoch, noise_func, "")
+  datasize_noise_test(number_id_network, x_train, y_train, x_test, y_test, epoch, noise_func)
 
 if __name__=="__main__":
   main()
