@@ -27,12 +27,16 @@ class Layer():
       # print(f"// {self.input_vec} {self.df(self.input_vec)} {delta_out_vec} {delta_in_vec} //")
     return self.df(self.input_vec).T @ delta_out_vec
   
+  def init_layer(self):
+    return
+  
 class LinearLayer(Layer):
 
   def __init__(self, input_dim, output_dim, name, eta=0.01, init_func=np.ones):
     super().__init__(input_dim, output_dim, name)
     self.eta = eta
     self.weight = init_func((output_dim, 1 + input_dim))
+    self.init_func = init_func
   
   def f(self, input_vec):
     return self.weight @ np.hstack([[1], input_vec]).T
@@ -45,6 +49,8 @@ class LinearLayer(Layer):
     self.weight = self.weight - (self.eta * weight_diff)
     return super().back(delta_out_vec)
   
+  def init_layer(self):
+    self.__init__(self.input_dim, self.output_dim, self.name, self.eta, self.init_func)
 
 class FixedNormalizeLayer(Layer):
 
@@ -90,6 +96,7 @@ class LinearNormalizeActivateLayer(Layer):
     self.mean = 0
     self.std = 0
     self.eta = eta
+    self.init_func = init_func
     self.weight = init_func((output_dim, 1 + input_dim))
   
   def forward(self, input_vec):
@@ -109,3 +116,6 @@ class LinearNormalizeActivateLayer(Layer):
     self.weight = self.weight - (self.eta * weight_diff)
     # print(f"{self.name}: {np.mean(np.abs(weight_diff))}, {np.mean(np.abs(jacobian))}, {np.mean(np.abs(delta_out_vec))}, {np.mean(np.abs(acti_diff_vec))}, {np.mean(np.abs(self.input_vec))}, {np.mean(np.abs(self.weight))}, {np.mean(np.abs(delta_in_vec))}")
     return delta_in_vec
+
+  def init_layer(self):
+    self.__init__(self.input_dim, self.output_dim, self.acti_func, self.acti_diff_func, self.name, self.eta, self.init_func)

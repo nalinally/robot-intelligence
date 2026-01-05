@@ -50,6 +50,13 @@ def fixed_normalize_diff(x):
   # print(f"{np.eye(len(x))} {y[:, None] @ y[None, :]} {(1 + (y[:, None] @ y[None, :])) / n} {sigma} {(np.eye(len(x)) - ((1 + (y[:, None] @ y[None, :])) / n)) / sigma}")
   return (np.eye(len(x)) - ((1 + (y[:, None] @ y[None, :])) / n)) / sigma
 
+def data_normalize(target_scope, data_scope):
+  def normalize(x):
+    return target_scope[0] + (x - data_scope[0]) / (data_scope[1] - data_scope[0]) * (target_scope[1] - target_scope[0])
+  def func(data):
+    return [[normalize(data[i][j]) for j in range(len(data[0]))] for i in range(len(data))]
+  return func
+
 # pooling
 def average_pooling(dx, dy):
   def func(data):

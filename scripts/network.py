@@ -35,6 +35,10 @@ class Network:
       # print(f"{self.layers[i].name} {self.deltas[0]}")
     # print(self.deltas)
 
+  def init_layers(self):
+    for layer in self.layers:
+      layer.init_layer()
+
   def eval(self, teacher_vec):
     return self.eval_func(self.vecs[-1], teacher_vec)
   
